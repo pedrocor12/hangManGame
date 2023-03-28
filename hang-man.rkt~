@@ -1,0 +1,176 @@
+;; hang-man for REPL Scheme
+
+
+;;
+(define source-name "glossary.txt")
+
+;; Side effect:
+;; Strig-> IO([String])
+;; Passed the path, open the file containig glossary
+(define (read-words-from filename)
+  (let* ((port (open-input-file filename))
+         (res (read-word-list port '())))
+    (close-input-port port)
+    res))
+
+;; Side effect
+;; Fd -> [String] -> IO ([String])
+;; Passed port and acumulator, return the all the words as strings
+(define (read-word-list port acc)
+  (let ((stuff (read port)))
+    (if (eof-object? stuff)
+        acc
+        (read-word-list port
+                        (cons (symbol->string stuff) acc)))))
+
+(define list-of-words (read-words-from source-name))
+
+;; STATE OF THE GAME
+(define glossary (map string->list list-of-words))
+(define word-to-guess
+(list-ref glossary(random(length glossary))))
+
+(define partial-sol word-to-guess)
+
+(define hits 0)
+(define plays 0)
+(define failures 0)
+(define total-failures 6)
+(define total-hits (length word-to-guess))
+
+
+
+
+
+;; 
+;; IO(String)
+(define (game-status)
+  (begin
+    (format "~a H:~a/~a F:~a/~a ~a ~a"
+            partial-sol
+            hits  total-hits
+            failures  total-failures
+            plays
+            (if (and
+                 (< hits total-hits)
+                 (< failures total-failures))
+                ""
+                (string-append "GAME-OVER(" (list->string word-to-guess) ")")))))
+
+          
+
+;;;
+;;  PURELY FUNCTIONAL
+;;
+
+
+(define (occurrences word char)
+  (cond
+    [(null? word) 0]
+    [(equal? (car word) char) (+ (occurrences (cdr word) char)1)]
+    [else
+     (occurrences(cdr word) char)
+     ]))
+            
+
+
+;;to test (occurrences '(#\b #\b #\a) #\b)
+;; (occurrences '(#\a #\b #\b) #\b)
+;;This is where occurences finishes
+;;(indices '(#\a #\b #\b) #\b)
+
+(define (indices word char)
+  (let loop ((word word)
+             (original-list '())
+             (index 0))
+    (cond
+      [(empty? word) (reverse original-list)]
+      [(equal? (first word) char)
+       (loop (rest word)
+             (cons index original-list)
+             (+ 1 index))]
+      [else
+       (loop (rest word)
+              original-list
+             (+ 1 index))])))
+
+(require racket/trace)
+(trace indices)
+
+
+;;test indices (indices '() #\b)
+
+;;;;;;;;;;;;;;;;;;;;;
+ ;; test (replace-indices '(#\a #\* #\*) '( 1 2) #\b)
+
+(define (replace-indices word idx new)
+  (cond
+    [(empty? word) word]
+    [(empty? idx) word]
+    [(= 0(car idx)) ;;base case
+     (cons new(replace-indices(cdr word) (map sub1(cdr idx)) new))] ;; map is decrementing one each time
+    [else
+     (cons (car word) (replace-indices(cdr word) (map sub1 idx) new))]))
+
+
+;;test number of hits " (noOfHits '(#\a #\* #\*)) "
+(define (noOfHits hidden)
+  (cond
+    [(null? hidden) 0]
+    [(not (eq? '#\* (car hidden))) (+ 1 (noOfHits (cdr hidden)))]
+    [else
+     (noOfHits (cdr hidden))]))
+(require racket/trace)
+(trace noOfHits)
+
+            
+;; Side effects
+;; IO(String)
+(define (restart)
+  (begin
+    (set! partial-sol (make-string total-hits #\*))
+    (set! hits (+ hits 0))
+    (set! plays (+ plays 0))
+    (set! failures (+ failures 0))
+    (game-status)))
+
+
+;; Char -> IO(String)
+(define (guess char) (void)
+  (begin
+    (set! plays (+ plays 1))
+    (game-status)))
+
+
+;; IO(String)
+(define (solve word) (void))
+
+
+;;
+;; EXTRA -F3
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; [(equal? (car word) char) (+ (occurrences (cdr word) char)1)]
+   
+;; p: all-words as list of list of char
+(define (words-containing all-words char )
+  (cond
+    [(empty? all-words) empty]
+    [(equal? (car(car all-words))char) ;;because i am checking for a list inside another list
+     (cons(car all-words)(words-containing(cdr all-words)char))]
+    [else
+     (words-containing(cdr all-words)char)]))
+
+                                   
+ ;;(occurrences(cdr word) char)
+     ;;]))
+            
+
+;; p: all-words as list of list of char
+;;  : chars as a list of char
+(define (words-containing-ext all-words chars) null)
+
+;; IO([String])
+;; this is very hard.
+(define (sieve chars) (void))
+
